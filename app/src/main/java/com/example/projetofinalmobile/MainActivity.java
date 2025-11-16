@@ -1,20 +1,25 @@
 package com.example.projetofinalmobile;
 
 import android.os.Bundle;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
-    private LinearLayout containerListaAudios;
+
     private FloatingActionButton btnIniciarGravacao;
+    private List<AudioItem> listaAudios = new ArrayList<>();
+    private AudioAdapter audioAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,12 +27,29 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        containerListaAudios = findViewById(R.id.containerAudios);
+        RecyclerView recycler = findViewById(R.id.ContainerViewLista);
+
+        audioAdapter = new AudioAdapter(listaAudios, new AudioAdapter.IOnAudioActions() {
+            @Override
+            public void onPlayPause(AudioItem item) {}
+
+            @Override
+            public void onDelete(AudioItem item) {}
+
+            @Override
+            public void onRename(AudioItem item) {}
+        });
+
+
+        // Configurando RecyclerView
+        recycler.setLayoutManager(new LinearLayoutManager(this));
+        recycler.setAdapter(audioAdapter);
+
         btnIniciarGravacao = findViewById(R.id.btnGravarAudio);
 
         btnIniciarGravacao.setOnClickListener(v -> {
             System.out.println("Teste -- audio" + v);
-           // iniciarGravacao();
+            // iniciarGravacao();
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -36,14 +58,13 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // adicionarNovoAudio("Gravação_001.mp3", 12);
+        // teste
+        adicionarNovoAudio("Gravação_001.mp3", 12);
     }
-    private void adicionarNovoAudio(String nomeArquivo, int duracaoSegundos) {
-        TextView novoItem = new TextView(this);
-        novoItem.setText("🎙 " + nomeArquivo + " (" + duracaoSegundos + "s)");
-        novoItem.setTextSize(18);
-        novoItem.setPadding(16, 16, 16, 16);
 
-        containerListaAudios.addView(novoItem);
+    private void adicionarNovoAudio(String nomeArquivo, int duracaoSegundos) {
+        AudioItem novo = new AudioItem(nomeArquivo, duracaoSegundos);
+        listaAudios.add(novo);
+        audioAdapter.notifyItemInserted(listaAudios.size() - 1);
     }
 }
