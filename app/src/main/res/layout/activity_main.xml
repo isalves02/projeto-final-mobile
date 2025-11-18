@@ -53,24 +53,6 @@
     <!--        app:layout_constraintStart_toStartOf="parent"-->
     <!--        app:layout_constraintTop_toTopOf="parent" />-->
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/btnPausarAudio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="264dp"
-        android:background="#F00D0D"
-        android:clickable="true"
-        android:contentDescription="Parar de gravar"
-        android:tint="#FFFFFF"
-        app:backgroundTint="#FFFFFF"
-        app:circularflow_radiusInDP="100dp"
-        app:fabCustomSize="64dp"
-        app:layout_constraintStart_toEndOf="@+id/btnGravarAudio"
-        app:layout_constraintTop_toTopOf="parent"
-        app:rippleColor="#FFFFFF"
-        app:srcCompat="@android:drawable/ic_media_pause" />
-
     <Button
         android:id="@+id/btnRemoverAudio"
         android:layout_width="wrap_content"
@@ -89,7 +71,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="272dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="12dp"
         android:background="#EBEAEA"
         android:backgroundTint="#000000"
         android:text="Salvar"
@@ -106,8 +88,8 @@
         android:id="@+id/btnGravarAudio"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="36dp"
-        android:layout_marginTop="264dp"
+        android:layout_marginStart="60dp"
+        android:layout_marginTop="260dp"
         android:accessibilityLiveRegion="assertive"
         android:background="#E7E7E7"
         android:clickable="true"

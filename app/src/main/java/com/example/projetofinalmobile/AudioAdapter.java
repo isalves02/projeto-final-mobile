@@ -13,17 +13,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHolder> {
-
-    private List<AudioItem> listaAudios;
-    private IOnAudioActions listener;
-
     public interface IOnAudioActions {
-        void onPlayPause(AudioItem item);
-        void onDelete(AudioItem item);
-        void onRename(AudioItem item);
+        void onPlayPause(Recording item);
+        void onDelete(Recording item);
+        void onRename(Recording item);
     }
 
-    public AudioAdapter(List<AudioItem> listaAudios, IOnAudioActions listener) {
+    private List<Recording> listaAudios;
+    private IOnAudioActions listener;
+
+    public AudioAdapter(List<Recording> listaAudios, IOnAudioActions listener) {
         this.listaAudios = listaAudios;
         this.listener = listener;
     }
@@ -37,13 +36,11 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
 
     @Override
     public void onBindViewHolder(@NonNull AudioViewHolder holder, int position) {
-        AudioItem item = listaAudios.get(position);
+        Recording rec = listaAudios.get(position);
+        holder.txtNome.setText(rec.getName());
 
-        holder.txtNome.setText(item.getNomeArquivo());
-
-        holder.btnPlayPause.setOnClickListener(v -> listener.onPlayPause(item));
-        holder.btnExcluir.setOnClickListener(v -> listener.onDelete(item));
-        holder.btnRenomear.setOnClickListener(v -> listener.onRename(item));
+        holder.btnPlayPause.setOnClickListener(v -> listener.onPlayPause(rec));
+        holder.btnExcluir.setOnClickListener(v -> listener.onDelete(rec));
     }
 
     @Override
@@ -52,18 +49,16 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
     }
 
     static class AudioViewHolder extends RecyclerView.ViewHolder {
-
         TextView txtNome;
-        ImageButton btnPlayPause, btnExcluir, btnRenomear;
+        ImageButton btnPlayPause, btnExcluir;
         ProgressBar barraProgresso;
 
-        public AudioViewHolder(View itemView) {
+        public AudioViewHolder(@NonNull View itemView) {
             super(itemView);
 
             txtNome = itemView.findViewById(R.id.txtNome);
             btnPlayPause = itemView.findViewById(R.id.btnPlayPause);
             btnExcluir = itemView.findViewById(R.id.btnExcluir);
-            btnRenomear = itemView.findViewById(R.id.btnRenomear);
             barraProgresso = itemView.findViewById(R.id.progressoAudio);
         }
     }
