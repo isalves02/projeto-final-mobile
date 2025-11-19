@@ -9,7 +9,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Button;
 
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -27,29 +26,30 @@ import java.util.List;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
+    // Reproduzir audio
+    private PlaybackManager playbackManager;
+    private Handler handlerProgresso = new Handler();
 
+    // Permissao audio
     private static final int REQUEST_AUDIO_PERMISSION = 1001;
 
-    // Componentes da UI
+    // UI
     private FloatingActionButton btnIniciarGravacao;
-    private Button btnSalvarAudio;
-
+    private Button btnSalvarAudio, btnRemoverAudioNaoSalvo;
     private TextView txtCronometro;
 
-    // Gravação de áudio
+    // Gravação
     private boolean isRecording = false;
     private boolean isPaused = false;
     private MediaRecorder recorder;
     private String currentFilePath;
 
-    // Lista de gravações
     private List<Recording> listaGravacoes = new ArrayList<>();
     private AudioAdapter audioAdapter;
 
     // Cronômetro
     private long startTime = 0;
     private long tempoPausado = 0;
-
     private Handler handler = new Handler();
     private Runnable cronometroRunnable;
 
@@ -58,14 +58,52 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        playbackManager = new PlaybackManager();
         inicializarComponentes();
         configurarRecyclerView();
         configurarBotaoGravacao();
         configurarBotaoSalvar();
+        configurarBotaoRemoverGravacaoTemporaria();
         aplicarWindowInsets();
 
         // garantir ícone inicial consistente
         atualizarUIGravacao();
+
+        // listener reprodução de audio
+        playbackManager.setPlaybackListener(new PlaybackManager.PlaybackListener() {
+            @Override
+            public void onPlay(Recording rec) {
+                audioAdapter.atualizarProgressoAudio(rec, true, 0);
+            }
+
+            @Override
+            public void onPause() {
+                audioAdapter.atualizarProgressoAudio(
+                        playbackManager.getCurrentRecording(),
+                        false,
+                        0
+                );
+            }
+
+            @Override
+            public void onStop() {
+                audioAdapter.atualizarProgressoAudio(null, false, 0);
+            }
+
+            @Override
+            public void onCompletion() {
+                audioAdapter.atualizarProgressoAudio(null, false, 0);
+            }
+
+            @Override
+            public void onProgress(int progress) {
+                audioAdapter.atualizarProgressoAudio(
+                        playbackManager.getCurrentRecording(),
+                        true,
+                        progress
+                );
+            }
+        });
     }
 
     // ============================================================
@@ -76,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
         txtCronometro = findViewById(R.id.cronometro);
         btnIniciarGravacao = findViewById(R.id.btnGravarAudio);
         btnSalvarAudio = findViewById(R.id.btnSalvarAudio);
+        btnRemoverAudioNaoSalvo = findViewById(R.id.btnRemoverAudioNaoSalvo);
     }
 
     private void configurarRecyclerView() {
@@ -83,17 +122,13 @@ public class MainActivity extends AppCompatActivity {
         audioAdapter = new AudioAdapter(listaGravacoes, new AudioAdapter.IOnAudioActions() {
             @Override
             public void onPlayPause(Recording item) {
-                Toast.makeText(MainActivity.this, "Play/Pause: " + item.getName(), Toast.LENGTH_SHORT).show();
+                // Chamar o PlaybackManager para tocar/pausar
+                playbackManager.play(item);
             }
 
             @Override
             public void onDelete(Recording item) {
                 deletarGravacao(item);
-            }
-
-            @Override
-            public void onRename(Recording item) {
-                Toast.makeText(MainActivity.this, "Renomear: " + item.getName(), Toast.LENGTH_SHORT).show();
             }
         });
         recycler.setLayoutManager(new LinearLayoutManager(this));
@@ -109,7 +144,6 @@ public class MainActivity extends AppCompatActivity {
             } else if (!isRecording && isPaused) { // pausado -> retomar
                 retomarGravacao();
             } else { // fallback seguro
-                // não deve acontecer, mas mantém consistência
                 mostrarToast("Estado inválido");
                 atualizarUIGravacao();
             }
@@ -127,6 +161,45 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void configurarBotaoRemoverGravacaoTemporaria() {
+        btnRemoverAudioNaoSalvo.setOnClickListener(v -> {
+            if (!isRecording && !isPaused) {
+                mostrarToast("Nenhuma gravação ativa para remover.");
+                return;
+            }
+
+            try {
+                // Se tiver gravando, para
+                if (recorder != null && isRecording) {
+                    recorder.stop();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                liberarRecorder();
+            }
+
+            // excluir temp file
+            if (currentFilePath != null) {
+                java.io.File file = new java.io.File(currentFilePath);
+                if (file.exists()) {
+                    file.delete();
+                }
+            }
+
+            isRecording = false;
+            isPaused = false;
+            tempoPausado = 0;
+            currentFilePath = null;
+
+            pararCronometro();
+            txtCronometro.setText("00:00");
+
+            atualizarUIGravacao();
+            mostrarToast("Gravação descartada.");
+        });
+    }
+
     private void aplicarWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -138,7 +211,6 @@ public class MainActivity extends AppCompatActivity {
     // ============================================================
     // PERMISSÕES
     // ============================================================
-
     private void verificarPermissaoEIniciar() {
         if (temPermissaoAudio()) {
             iniciarGravacao();
@@ -181,15 +253,14 @@ public class MainActivity extends AppCompatActivity {
     // ============================================================
     // CONTROLE DE GRAVAÇÃO
     // ============================================================
-
     private void iniciarGravacao() {
         try {
             prepararGravacao();
             recorder.start();
 
             isRecording = true;
-            isPaused = false;            // garantir paused falso
-            tempoPausado = 0;            // reset tempo pausado
+            isPaused = false;
+            tempoPausado = 0;
             atualizarUIGravacao();
             iniciarCronometro();
             mostrarToast("Gravando...");
@@ -264,6 +335,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void deletarGravacao(Recording item) {
+        // Parar áudio se estiver tocando antes de deletar
+        if (playbackManager.getCurrentRecording() != null &&
+                playbackManager.getCurrentRecording().getId().equals(item.getId())) {
+            playbackManager.stop();
+        }
+
+        // Deletar arquivo físico
+        java.io.File file = new java.io.File(item.getFilePath());
+        if (file.exists()) {
+            file.delete();
+        }
+
         int position = listaGravacoes.indexOf(item);
         if (position != -1) {
             listaGravacoes.remove(position);
@@ -272,12 +355,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ============================================================
-    // UI: atualizar com base nos estados (sem parâmetro)
+    // UI: atualizacao com base nos estados
     // ============================================================
     private void atualizarUIGravacao() {
-        // lógica clara e simples:
-        // - se gravação ativa e não pausada -> ícone PAUSE
-        // - se pausado ou parado -> ícone PLAY (retomar ou iniciar)
         if (isRecording && !isPaused) {
             btnIniciarGravacao.setImageResource(android.R.drawable.ic_media_pause);
         } else {
@@ -291,20 +371,15 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     recorder.pause();
 
-                    // estados corretos
                     isPaused = true;
                     isRecording = false;
 
-                    // salvar tempo acumulado
                     tempoPausado = System.currentTimeMillis() - startTime;
 
-                    // atualizar UI usando os estados atuais
                     atualizarUIGravacao();
-
                     pararCronometro();
                     mostrarToast("Pausado");
                 } catch (IllegalStateException e) {
-                    // caso o recorder não esteja em estado que permite pause
                     mostrarToast("Não foi possível pausar (estado inválido).");
                 }
             } else {
@@ -319,7 +394,6 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     recorder.resume();
 
-                    // estados corretos
                     isPaused = false;
                     isRecording = true;
 
@@ -381,5 +455,6 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         pararCronometro();
         liberarRecorder();
+        playbackManager.stop(); // liberar media player
     }
 }
