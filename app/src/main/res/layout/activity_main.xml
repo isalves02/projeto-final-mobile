@@ -54,7 +54,7 @@
     <!--        app:layout_constraintTop_toTopOf="parent" />-->
 
     <Button
-        android:id="@+id/btnRemoverAudio"
+        android:id="@+id/btnRemoverAudioNaoSalvo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="272dp"
@@ -81,7 +81,7 @@
         android:textSize="16sp"
         android:textStyle="bold"
         app:iconTint="#FFFFFF"
-        app:layout_constraintEnd_toStartOf="@+id/btnRemoverAudio"
+        app:layout_constraintEnd_toStartOf="@+id/btnRemoverAudioNaoSalvo"
         app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
