@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Button;
+
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -30,10 +32,13 @@ public class MainActivity extends AppCompatActivity {
 
     // Componentes da UI
     private FloatingActionButton btnIniciarGravacao;
+    private Button btnSalvarAudio;
+
     private TextView txtCronometro;
 
     // Gravação de áudio
     private boolean isRecording = false;
+    private boolean isPaused = false;
     private MediaRecorder recorder;
     private String currentFilePath;
 
@@ -43,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
     // Cronômetro
     private long startTime = 0;
+    private long tempoPausado = 0;
+
     private Handler handler = new Handler();
     private Runnable cronometroRunnable;
 
@@ -54,7 +61,11 @@ public class MainActivity extends AppCompatActivity {
         inicializarComponentes();
         configurarRecyclerView();
         configurarBotaoGravacao();
+        configurarBotaoSalvar();
         aplicarWindowInsets();
+
+        // garantir ícone inicial consistente
+        atualizarUIGravacao();
     }
 
     // ============================================================
@@ -64,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     private void inicializarComponentes() {
         txtCronometro = findViewById(R.id.cronometro);
         btnIniciarGravacao = findViewById(R.id.btnGravarAudio);
+        btnSalvarAudio = findViewById(R.id.btnSalvarAudio);
     }
 
     private void configurarRecyclerView() {
@@ -90,11 +102,28 @@ public class MainActivity extends AppCompatActivity {
 
     private void configurarBotaoGravacao() {
         btnIniciarGravacao.setOnClickListener(v -> {
-            if (!isRecording) {
+            if (!isRecording && !isPaused) {      // parado -> iniciar
                 verificarPermissaoEIniciar();
-            } else {
-                pararGravacao();
+            } else if (isRecording && !isPaused) { // gravando -> pausar
+                pausarGravacao();
+            } else if (!isRecording && isPaused) { // pausado -> retomar
+                retomarGravacao();
+            } else { // fallback seguro
+                // não deve acontecer, mas mantém consistência
+                mostrarToast("Estado inválido");
+                atualizarUIGravacao();
             }
+        });
+    }
+
+    private void configurarBotaoSalvar() {
+        btnSalvarAudio.setOnClickListener(v -> {
+            if (!isRecording && !isPaused) {
+                mostrarToast("Nenhuma gravação ativa para salvar.");
+                return;
+            }
+
+            pararGravacao(); // finaliza gravação e salva
         });
     }
 
@@ -107,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // ============================================================
-    // GERENCIAMENTO DE PERMISSÕES
+    // PERMISSÕES
     // ============================================================
 
     private void verificarPermissaoEIniciar() {
@@ -159,7 +188,9 @@ public class MainActivity extends AppCompatActivity {
             recorder.start();
 
             isRecording = true;
-            atualizarUIGravacao(true);
+            isPaused = false;            // garantir paused falso
+            tempoPausado = 0;            // reset tempo pausado
+            atualizarUIGravacao();
             iniciarCronometro();
             mostrarToast("Gravando...");
 
@@ -198,8 +229,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         isRecording = false;
-        atualizarUIGravacao(false);
+        isPaused = false;
+        atualizarUIGravacao();
         pararCronometro();
+        tempoPausado = 0;
+        txtCronometro.setText("00:00");
+
         salvarGravacao();
         mostrarToast("Gravação salva!");
     }
@@ -236,11 +271,68 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void atualizarUIGravacao(boolean gravando) {
-        int icone = gravando
-                ? android.R.drawable.ic_media_pause
-                : android.R.drawable.ic_media_play;
-        btnIniciarGravacao.setImageResource(icone);
+    // ============================================================
+    // UI: atualizar com base nos estados (sem parâmetro)
+    // ============================================================
+    private void atualizarUIGravacao() {
+        // lógica clara e simples:
+        // - se gravação ativa e não pausada -> ícone PAUSE
+        // - se pausado ou parado -> ícone PLAY (retomar ou iniciar)
+        if (isRecording && !isPaused) {
+            btnIniciarGravacao.setImageResource(android.R.drawable.ic_media_pause);
+        } else {
+            btnIniciarGravacao.setImageResource(android.R.drawable.ic_media_play);
+        }
+    }
+
+    private void pausarGravacao() {
+        if (recorder != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                try {
+                    recorder.pause();
+
+                    // estados corretos
+                    isPaused = true;
+                    isRecording = false;
+
+                    // salvar tempo acumulado
+                    tempoPausado = System.currentTimeMillis() - startTime;
+
+                    // atualizar UI usando os estados atuais
+                    atualizarUIGravacao();
+
+                    pararCronometro();
+                    mostrarToast("Pausado");
+                } catch (IllegalStateException e) {
+                    // caso o recorder não esteja em estado que permite pause
+                    mostrarToast("Não foi possível pausar (estado inválido).");
+                }
+            } else {
+                mostrarToast("Pausar requer Android 7.0+");
+            }
+        }
+    }
+
+    private void retomarGravacao() {
+        if (recorder != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                try {
+                    recorder.resume();
+
+                    // estados corretos
+                    isPaused = false;
+                    isRecording = true;
+
+                    atualizarUIGravacao();
+                    iniciarCronometro();
+                    mostrarToast("Gravação retomada");
+                } catch (IllegalStateException e) {
+                    mostrarToast("Não foi possível retomar (estado inválido).");
+                }
+            } else {
+                mostrarToast("Retomar requer Android 7.0+");
+            }
+        }
     }
 
     // ============================================================
@@ -248,7 +340,8 @@ public class MainActivity extends AppCompatActivity {
     // ============================================================
 
     private void iniciarCronometro() {
-        startTime = System.currentTimeMillis();
+        startTime = System.currentTimeMillis() - tempoPausado;
+
         cronometroRunnable = new Runnable() {
             @Override
             public void run() {
@@ -256,6 +349,7 @@ public class MainActivity extends AppCompatActivity {
                 handler.postDelayed(this, 1000);
             }
         };
+
         handler.post(cronometroRunnable);
     }
 
@@ -272,7 +366,6 @@ public class MainActivity extends AppCompatActivity {
         if (cronometroRunnable != null) {
             handler.removeCallbacks(cronometroRunnable);
         }
-        txtCronometro.setText("00:00");
     }
 
     // ============================================================
