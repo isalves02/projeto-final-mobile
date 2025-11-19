@@ -21,9 +21,5 @@ public class Recording {
 
     public String getId() { return id; }
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
     public String getFilePath() { return filePath; }
-    public long getCreatedAt() { return createdAt; }
-    public boolean isFavorite() { return favorite; }
-    public void setFavorite(boolean favorite) { this.favorite = favorite; }
 }

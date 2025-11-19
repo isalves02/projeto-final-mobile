@@ -13,10 +13,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHolder> {
+    private Recording recordingTocando = null;
+    private boolean isPlaying = false;
+    private int progresso = 0;
+
     public interface IOnAudioActions {
         void onPlayPause(Recording item);
         void onDelete(Recording item);
-        void onRename(Recording item);
     }
 
     private List<Recording> listaAudios;
@@ -37,7 +40,19 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
     @Override
     public void onBindViewHolder(@NonNull AudioViewHolder holder, int position) {
         Recording rec = listaAudios.get(position);
+
         holder.txtNome.setText(rec.getName());
+
+        boolean thisIsPlaying = (recordingTocando != null &&
+                recordingTocando.getId().equals(rec.getId()));
+
+        if (thisIsPlaying && isPlaying) {
+            holder.btnPlayPause.setImageResource(android.R.drawable.ic_media_pause);
+            holder.barraProgresso.setProgress(progresso);
+        } else {
+            holder.btnPlayPause.setImageResource(android.R.drawable.ic_media_play);
+            holder.barraProgresso.setProgress(0);
+        }
 
         holder.btnPlayPause.setOnClickListener(v -> listener.onPlayPause(rec));
         holder.btnExcluir.setOnClickListener(v -> listener.onDelete(rec));
@@ -55,11 +70,17 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
 
         public AudioViewHolder(@NonNull View itemView) {
             super(itemView);
-
             txtNome = itemView.findViewById(R.id.txtNome);
             btnPlayPause = itemView.findViewById(R.id.btnPlayPause);
             btnExcluir = itemView.findViewById(R.id.btnExcluir);
             barraProgresso = itemView.findViewById(R.id.progressoAudio);
         }
+    }
+
+    public void atualizarProgressoAudio(Recording rec, boolean isPlaying, int progressoAtual) {
+        this.recordingTocando = rec;
+        this.isPlaying = isPlaying;
+        this.progresso = progressoAtual;
+        notifyDataSetChanged();
     }
 }
