@@ -115,6 +115,13 @@ public class MainActivity extends AppCompatActivity {
         btnIniciarGravacao = findViewById(R.id.btnGravarAudio);
         btnSalvarAudio = findViewById(R.id.btnSalvarAudio);
         btnRemoverAudioNaoSalvo = findViewById(R.id.btnRemoverAudioNaoSalvo);
+
+        // remover interação cronometro
+        txtCronometro.setFocusable(false);
+        txtCronometro.setFocusableInTouchMode(false);
+        txtCronometro.setClickable(false);
+        txtCronometro.setLongClickable(false);
+        txtCronometro.setCursorVisible(false);
     }
 
     private void configurarRecyclerView() {
